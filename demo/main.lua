@@ -11,6 +11,7 @@ WIREFRAME_MODE=false
 opacity={value=0}
 
 function love.load()
+	lavis.override()
 	gStateMachine=StateMachine({
 		['start']=function() return StartState() end,
 		['menu']=function() return MainMenuState() end,
