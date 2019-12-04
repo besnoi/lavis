@@ -1,6 +1,6 @@
 # Lavis Minimal
 
-Lavis is a GUI library for Love2D which is *kinda like loveframes but for games*. That's it's punchline
+Lavis is a GUI library for Love2D which is *kinda like loveframes but for games*. That's its punchline
 
 <p align='center'>
 <a href="screens/minimal demo.gif" title="Click to view the Image in Full Resolution">
