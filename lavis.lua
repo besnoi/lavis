@@ -593,6 +593,7 @@ function lavis.mousemoved(...) forEachWidgetC('mousemoved','enabled',...) end
 function lavis.wheelmoved(...) forEachWidgetC('wheelmoved','enabled',...) end
 function lavis.update(dt) forEachWidgetC('update','enabled',dt) end
 function lavis.draw() forEachWidgetC('render','visible') end
+end
 function lavis.setWireframe(val) lavis.forEachWidget(function(w) w:setWireframe(val) end) end
 function lavis.enableAll() lavis.forEachWidget(function(w) w.enabled=true end) end
 function lavis.disableAll() lavis.forEachWidget(function(w) w.enabled=false end) end
@@ -632,5 +633,4 @@ function love.wheelmoved(...)
 	lavis.wheelmoved(...)
 end
 
-end
 return lavis
