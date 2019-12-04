@@ -584,6 +584,7 @@ end
 
 lavis.remove=lavis.removeWidget
 
+function lavis.override()
 function lavis.mousepressed(...) forEachWidgetC('mousepressed','enabled',...) end
 function lavis.keypressed(...) forEachWidgetC('keypressed','enabled',...) end
 function lavis.keyreleased(...) forEachWidgetC('keyreleased','enabled',...) end
@@ -631,4 +632,5 @@ function love.wheelmoved(...)
 	lavis.wheelmoved(...)
 end
 
+end
 return lavis
