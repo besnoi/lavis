@@ -24,10 +24,8 @@ Lavis is a GUI library for Love2D which is *kinda like loveframes but for games*
 To use Lavis, you would simply copy the folder lavis to some other folder in your game - let's say 'lib' - which should be in the same directory as main.lua and then you'd simply say:-
 
 ```lua
-require 'lavis'
+lavis=require 'lavis'
 ```
-
-It is assumed that the folder lavis contains the `init.lua` file! Alternatively you can also use Lavis as a module just rename it from `init.lua` to something like `lavis.lua` and move it one directory up and follow the same step as before!
 
 ### Create your game's GUI within minutes
 
