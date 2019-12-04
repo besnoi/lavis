@@ -632,5 +632,8 @@ end
 function love.wheelmoved(...)
 	lavis.wheelmoved(...)
 end
+	
+function love.draw() lavis.draw() end
+function love.update(dt) lavis.update(dt) end
 end
 return lavis
