@@ -584,7 +584,7 @@ end
 
 lavis.remove=lavis.removeWidget
 
-function lavis.override()
+
 function lavis.mousepressed(...) forEachWidgetC('mousepressed','enabled',...) end
 function lavis.keypressed(...) forEachWidgetC('keypressed','enabled',...) end
 function lavis.keyreleased(...) forEachWidgetC('keyreleased','enabled',...) end
@@ -593,7 +593,7 @@ function lavis.mousemoved(...) forEachWidgetC('mousemoved','enabled',...) end
 function lavis.wheelmoved(...) forEachWidgetC('wheelmoved','enabled',...) end
 function lavis.update(dt) forEachWidgetC('update','enabled',dt) end
 function lavis.draw() forEachWidgetC('render','visible') end
-end
+
 function lavis.setWireframe(val) lavis.forEachWidget(function(w) w:setWireframe(val) end) end
 function lavis.enableAll() lavis.forEachWidget(function(w) w.enabled=true end) end
 function lavis.disableAll() lavis.forEachWidget(function(w) w.enabled=false end) end
@@ -608,7 +608,7 @@ function lavis.new(...) return lavis.widget(...) end
 	To override these functions just add your stuff *below* the lavis calls
 	... So that your code never sees them again (unless you make some use of them)
 ]]
-
+function lavis.override()
 function love.mousepressed(...)
 	lavis.mousepressed(...)
 end
@@ -632,5 +632,5 @@ end
 function love.wheelmoved(...)
 	lavis.wheelmoved(...)
 end
-
+end
 return lavis
