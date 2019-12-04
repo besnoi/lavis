@@ -56,4 +56,5 @@ Lavis is a responsive retained-mode GUI! Well what do I mean by that! See for yo
 
 ## Documentation
 
-The documentation can be found [here](). Alternatively you can also *build* the docs in the [docs]() branch!
+~~The documentation can be found [here](). Alternatively you can also *build* the docs in the [docs]() branch!~~
+Sorry the documentation will take some time (I'm working on it and will upload it soon)
