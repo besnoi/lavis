@@ -38,7 +38,7 @@ Lavis doesn't come from the Jeans brand "Levi's". Lavis actually comes from 'lav
 
 ### Why retained-mode?
 
-ImGUIs are gaining a lot of popularity nowadays because of the ease of creating them and also because they are much faster then the `retained-mode` GUIs. But retained-mode has their own advantages even in context of game-development first one being the learning curve- ImGUIs can sometimes be confusing whereas retained-mode are crystal-clear - like the button is not showing itself because you had hidden it before rendering compared to *the button there is not showing because it shares the same GEN_ID with a invisible widget*!
+ImGUIs are gaining a lot of popularity nowadays because of the ease of creating them and also because they are much faster to create then the `retained-mode` GUIs. But retained-mode has their own advantages even in context of game-development first one being the learning curve- ImGUIs can sometimes be confusing whereas retained-mode are crystal-clear - like the button is not showing itself because you had hidden it before rendering compared to *the button there is not showing because it shares the same GEN_ID with a invisible widget*! **Also retained-mode GUIs are lightning fast when compared to imguis!**
 
 And believe it or not but retained-mode GUIs are preffered over ImGUIs in context of casual-game development. Cause casual game developers are mostly web-developers and are more comfortable with the `addEventListener` sort of paradigm than they are with those GEN_IDs or whatever.
 
