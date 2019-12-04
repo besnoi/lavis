@@ -101,6 +101,7 @@ function lavis.widget:initWidget(x,y,shape,...)
 		"Lavis Error! Expected a string for shape, got '"..shape.."' !"
 	)
 	self:setShape(shape,...)
+	self.id=#lavis.widgets+1
 	table.insert(lavis.widgets,self)
 	self.responsive=true
 	self:setPosition(x,y)
