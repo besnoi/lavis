@@ -2,6 +2,8 @@ lavis=require 'lib.lavis'
 clove=require 'lib.clove'
 clove.requireAll('lib')
 clove.requireAll('src')
+--since our assets are very HD we don't want to draw to canvas (for this demo) you can try removing this!
+lavis.directDraw=true
 clove.requireAll('src/states')
 
 gAssets=clove.importAll('assets',true)
@@ -11,7 +13,6 @@ WIREFRAME_MODE=false
 opacity={value=0}
 
 function love.load()
-	lavis.override()
 	gStateMachine=StateMachine({
 		['start']=function() return StartState() end,
 		['menu']=function() return MainMenuState() end,
