@@ -1,6 +1,6 @@
 # Lavis Minimal
 
-Lavis is a GUI library for Love2D which is *kinda like loveframes but for games*. That's its punchline
+Lavis is a *cross-mode* GUI library for Love2D which is *kinda like loveframes but for games*. That's its punchline and remember LoveFrames can't create immediate widgets!
 
 <p align='center'>
 <a href="screens/minimal demo.gif" title="Click to view the Image in Full Resolution">
@@ -12,6 +12,7 @@ Lavis is a GUI library for Love2D which is *kinda like loveframes but for games*
 - [How to use?](#how-to-use)
 - [Create your game's GUI within minutes](#create-your-games-gui-within-minutes)
 - About Lavis
+  - [What Lavis is about?](#what-lavis-is-about)
   - [About the name](#about-the-name)
   - [Why retained-mode?](#why-retained-mode)
   - [Lavis is responsive](#lavis-is-responsive)
@@ -29,6 +30,40 @@ lavis=require 'lavis'
 
 ### Create your game's GUI within minutes
 
+There are two approaches to creating your GUI - first one retained and another immediate!!
+For example both the following programs do the same thing, print a message when an image-button is clicked:-
+
+```lua
+lavis.imageButton('button.png',400,300):addEventListener('click',function()
+  print('button clicked')
+end)
+```
+
+```lua
+function love.draw()
+  lavis.drawImageButton(1,'button.png',400,300)  --id for this button is 1
+end
+lavis.imgui.onClick=function(id)
+  if id==1 then print('button clicked') end
+end
+```
+Now some may prefer retained-mode others may prefer immediate-mode, it's upto them and their needs. Retained-mode uses a canvas (by default) for rendering and is arguably faster than immediate-mode but it also uses more memory!
+
+There are *several* examples to get you started using Lavis!!
+
+### What Lavis is about?
+
+Before you actually do anything with Lavis, i think you should know what Lavis is about? what it can do and what it can't!
+
+1. **Lavis is all about making highly customizable guis with less code:** Lavis cannot create all types of GUI, no library in the earth could do that! But it can very easily mimick the GUIs that you see in most games (casual games so-to-speak)!
+
+2. **Lavis is about games not apps:** No matter what function changes, Lavis will always and *always* be about games! That's not to say you can't use it in apps! You could- The Horizontal and Vertical layout mimicks the (now deprecated) HBox and VBox of GTK+3 and with it you can create highly responsive GUIs that adapt to the screen resizing!
+
+3. **Lavis is fast and robust:** Developers of Lavis (i.e. me) will always strive to make Lavis as better as possible. The current model of Lavis uses sprite-batches,text-objects and canvases!
+
+4. **Lavis is cross-mode:** Lavis supports both Retained and Immediate-Mode!! What do I mean by that? See if for yourself:-
+
+5. **Lavis is responsive:**  Well what do I mean by that? Have a look at it yourself:
 
 ### About the name
 
