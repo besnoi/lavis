@@ -1,5 +1,4 @@
 lavis=require 'lavis'
-lavis.override()
 lavis.button=lavis.imageButton
 require 'src'
 
