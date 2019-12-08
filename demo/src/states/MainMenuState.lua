@@ -8,8 +8,8 @@ function MainMenuState:enter()
 		self.btns[i]:setSize(300,100)
 		self.btns[i]:setHotButton(1,true)
 		self.btns[i]:removeEscapeButtons()
-		self.btns[i].onKeyPress=function(...) self:navigate(i,...) end
-		self.btns[i].onKeyRelease=self.keyReleased
+		self.btns[i].onKeyPress=function(this,...) self:navigate(i,...) end
+		self.btns[i].onKeyRelease=function(this,key) self.keyReleased(key) end
 		self.btns[i]:setColor(1,1,1,opacity.value)	
 		self.btns[i]:setWireframe(WIREFRAME_MODE)
 	end
