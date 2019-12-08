@@ -7,16 +7,179 @@
 ]]
 
 local LIB_PATH=(...)
-
+local eF=function() end --empty function
 
 local lavis={
-	widgets={} --note widget is a class and widgets is a collection of its objects
+	directDraw,   --if Lavis shouldn't draw to the canvas? nil by default
+	needsRefresh, --should one redraw the stuff to the canvas?
+	canvas,       --lavis will draw things to the canvas which makes it efficient!!
+	cache={},     --lavis can load images from file! so it maintains a cache!
+	imgui,        --lavis is not just retained!! It also supports immediate mode
+	canvas,       --for best performance optimization Lavis uses a canvas!!
+	widgets={}    --note widget is a class and widgets is a collection of its objects
 }
+
+
+--This takes care of (perhaps) all canvas problems!
+lavis.canvas=love.graphics.newCanvas(love.graphics.getDimensions())
+local setMode=love.window.setMode
+lavis.resize=function(w,h)
+	lavis.canvas=love.graphics.newCanvas(w,h)
+end
+love.window.setMode=function(w,h,...)
+	setMode(w,h,...)
+	lavis.resize(w,h)
+end
+
+function lavis.refresh() lavis.needsRefresh=true end
+
+function lavis.newImage(path)
+	if lavis.cache[path] then return lavis.cache[path] end
+	local img=love.graphics.newImage(path)
+	lavis.cache[path]=img
+	return img
+end
+
+--In the minimal version we only take care of mouse input!!!
+--also the callback functions are limited for the minimal version
+local imgui={
+	drawBorder,drawOrigin;        --if imgui is in debug mode
+	entered={};   --table to take care of mouse entered which widget!
+	pressed={};   --table to take care of mouse pressed which widget!
+	mx,my;                --the position of the mouse!
+	clicked;              --the button that was clicked (nil if not clicked)
+	clickType;            --if button was 'pressed' or 'released'
+	whileHovered=eF; --what to do while mouse is hovered over widget
+	whilePressed=eF; --what to do while a widget is pressed
+	onMouseEnter=eF;      --what to do when mouse enters a widget
+	onMouseExit=eF;       --what to do when mouse exits a widget
+	onClick=eF;    --what to do when a widget is pressed
+	onRelease=eF;   --what to do when a widget is released
+}
+
+lavis.imgui=imgui --we want the user to be able to access this!!
+--[[
+	Lavis ImGUI functions are seperated from retained functions
+	in case anyone wants to use only the ImGUI functionaliy!
+--]]
+local btnDown=love.mouse.isDown
+function lavis.imgui.update(dt)
+	if imgui.clickType=='pressed' then
+		imgui.clicked=imgui.clicked and btnDown(imgui.clicked) and imgui.clicked
+	elseif imgui.clickType=='released' then
+		imgui.clickType=nil
+	else
+		imgui.clicked=nil
+	end
+	imgui.mx,imgui.my=love.mouse.getPosition()
+end
+
+function lavis.imgui.mousepressed(x,y,btn)
+	imgui.clicked,imgui.clickType=btn,'pressed'
+end
+
+function lavis.imgui.mousereleased(x,y,btn)
+	imgui.clicked,imgui.clickType=btn,'released'
+end
+
+function lavis.drawImageButton(id,img,x,y,w,h,ox,oy,r)
+	local sx,sy
+	if type(id)~='number' then
+		img,x,y,w,h,ox,oy,r,id=id,img,x,y,w,h,ox,oy
+	end
+	ox,oy=ox or 0,oy or 0
+	img=type(img)~='string' and img or lavis.newImage(img)
+	if not w then
+		w,h=img:getDimensions()
+		sx,sy=1,1
+	else
+		sx,sy=w/img:getWidth(),h/img:getHeight()
+	end
+	local draw=function()
+		love.graphics.draw(img,x,y,r or 0,sx,sy,ox,oy)
+		imgui.debugDraw(x,y,w,h,ox,oy)
+	end
+	lavis.imgui.render(draw,id,x-ox,y-oy,w,h)
+end
+
+--Helper functions for imgui rendering!!
+
+local function renderArrow(x,y,dir,a,b,c)
+	
+	a,b,c=a or 20,b or 5,c or 30
+
+	if dir=='right' or dir=='left' then
+		if dir=='left' then a,c=-a,-c end
+		love.graphics.line(x,y,x+a,y)
+		love.graphics.polygon('fill',
+			x+a,y-b,
+			x+a,y+b,
+			x+c,y
+		)
+	elseif dir=='down' or dir=='up' then
+		if dir=='up' then a,c=-a,-c end
+		love.graphics.line(x,y,x,y+a)
+		love.graphics.polygon('fill',
+			x-b,y+a,
+			x+b,y+a,
+			x,y+c
+		)
+	end
+end
+
+function lavis.imgui.debugDraw(x,y,w,h,ox,oy)
+	if imgui.drawBorder then
+		love.graphics.setColor(0,1,0,1)
+		love.graphics.rectangle('line',x-ox,y-oy,w,h)
+	end
+	if imgui.drawOrigin then
+		love.graphics.setColor(0,1,0,0.7)
+		love.graphics.circle('fill',x,y,5)
+		if ox<w then renderArrow(x,y,"right") end
+		if ox>0 then renderArrow(x,y,"left") end
+		if oy<h then renderArrow(x,y,"down") end
+		if oy>0 then renderArrow(x,y,"up") end
+	end
+end
+
+function lavis.imgui.render(func,id,x,y,w,h)
+	if not id or id<1 then id=1 end
+	local r,g,b,a=love.graphics.getColor()
+	if lavis.aabb(x,y,w,h,imgui.mx,imgui.my) then
+		imgui.whileHovered(id,x,y,w,h)
+		if not imgui.entered[id] then
+			imgui.onMouseEnter(id,x,y,w,h)
+			imgui.entered[id]=true
+		end
+		if imgui.clicked then
+			imgui.whilePressed(id,imgui.clicked,x,y,w,h)
+			if imgui.clickType=='pressed' then
+				if not imgui.pressed[id] then
+					imgui.onClick(id,imgui.clicked,x,y,w,h)
+					imgui.pressed[id]=true
+				end
+			else
+				if imgui.pressed[id] then
+					imgui.onRelease(id,imgui.clicked,x,y,w,h)
+					imgui.pressed[id]=nil
+				end
+			end
+		end
+	else
+		if imgui.entered[id] then
+			imgui.onMouseExit(id,x,y,w,h)
+			imgui.entered[id]=nil
+		end
+	end
+	func()
+	love.graphics.setColor(r,g,b,a)
+end
+
 
 --[[
 	Just defines some common functions like aabb collision,etc.
 	For users using push you might want to override getCursorPosition
-]]
+--]]
 
 function lavis.aabb(x1,y1,w1,h1, x2,y2,w2,h2)
 	w2,h2=w2 or 0,h2 or 0
@@ -49,6 +212,7 @@ lavis.widget={
 	value=nil,                 --extra information for each widget
 	image=nil,                 --assumption: most widgets *will* have an image
 	entered=false,             --state of the widget (hovered or not)
+	dragging=nil,              --the button that's being used to drag the widget
 	focused=false,             --if you click on a widget once it's focused
 	x=0,                       --x and y for position of the widget
 	y=0,
@@ -72,23 +236,25 @@ lavis.widget={
 	escapebtns=nil,            --the btns which on pressing makes the widget lose focus
 	hotbtns=nil,            --the mouse btns which on pressing makes the widget gain focus
 
-	onRelease=function() end,      --when a MB is released over the widget
-	onClick=function() end,        --when a MB is clicked over the widget
-	onResize=function() end,       --when the widget is resized!
-	onMove=function() end,         --when the widget is moved!
-	onKeyPress=function() end,     --when a certain key is pressed *while focused*
-	onKeyRelease=function() end,   --when a certain key is released *while focused*
-	onFocusGained=function() end,  --called when the widget is focused
-	onFocusLost=function() end,    --called when the widget has lost focus
-	whileFocused=function() end,   --called as long as the widget is focused
-	whileKeyPressed=function() end,--*as long as* a key is pressed *while* focused
-	whilePressed=function() end,   --is called *while* LMB is down
-	whileHovered=function() end,   --is called *while* the cursor is over the widget
-	onMouseMove=function() end,    --is called when the cursor moves while still hovered
-	onWheelMove=function() end,    --is called when scrolled while the widget is still focused
-	onMouseEnter=function() end,        --when cursor enters the widget area
-	onMouseExit=function() end,         --when cursor exits the widget area
-	onValueChange=function() end,  --when the value of the widget is changed
+	onRelease=eF,      --when a MB is released over the widget
+	onClick=eF,        --when a MB is clicked over the widget
+	onDrag=eF,         --when a MB is clicked over the widget to drag it
+	onResize=eF,       --when the widget is resized!
+	onMove=eF,         --when the widget is moved!
+	onKeyPress=eF,     --when a certain key is pressed *while focused*
+	onKeyRelease=eF,   --when a certain key is released *while focused*
+	onFocusGained=eF,  --called when the widget is focused
+	onFocusLost=eF,    --called when the widget has lost focus
+	whileFocused=eF,   --called as long as the widget is focused
+	whileKeyPressed=eF,--*as long as* a key is pressed *while* focused
+	whilePressed=eF,   --is called *while* LMB is down
+	whileHovered=eF,   --is called *while* the cursor is over the widget
+	onMouseMove=eF,    --is called when the cursor moves while still hovered
+	onWheelMove=eF,    --is called when scrolled while the widget is still focused
+	onMouseEnter=eF,   --when cursor enters the widget area
+	onMouseExit=eF,    --when cursor exits the widget area
+	onValueChange=eF,  --when the value of the widget is changed
+	onDraw=eF,         --called after the widget is drawn
 }
 
 local r,g,b,a  -- to get the default color
@@ -114,10 +280,11 @@ end
 
 function lavis.widget:setPosition(x,y,ignore)
 	if self.frozen then return end
+	lavis.refresh()
 	self.x=x or self.x
 	self.y=y or self.y
 	if self.responsive and not ignore then self:setImagePosition(x,y) end
-	self.onMove(x,y,ignore)
+	self:onMove(x,y,ignore)
 end
 
 function lavis.widget:getSize()
@@ -129,7 +296,7 @@ end
 function lavis.widget:setSize(arg1,arg2,arg3)
 
 	if self.frozen then return end
-	
+	lavis.refresh()
 	local origw,origh=self.width,self.height
 
 	if self.shape=='box' then
@@ -182,7 +349,7 @@ function lavis.widget:setSize(arg1,arg2,arg3)
 	else
 		error("lavis Error! The given string is not a valid shape!")
 	end
-	self.onResize(arg1,arg2,arg3)
+	self:onResize(arg1,arg2,arg3)
 end
 
 function lavis.widget:updateSize()
@@ -198,20 +365,23 @@ function lavis.widget:updateSize()
 end
 
 function lavis.widget:getColor() return unpack(self.drawColor) end
-function lavis.widget:setColor(...) self.drawColor={...} end
+function lavis.widget:setColor(...) lavis.refresh() self.drawColor={...} end
 function lavis.widget:getOpacity() return self.drawColor[4] end
-
-function lavis.widget:setImage(url)
-	if type(url)~='string' then
-		self.image=url
-	else
-		self.image=love.graphics.newImage(url)
-	end
+function lavis.widget:setOpacity(a)
+	lavis.refresh()
+	self.drawColor=self.drawColor or {1,1,1} self.drawColor[4]=a
 end
 
+function lavis.widget:setImage(url)
+	lavis.refresh()
+	self.image=type(url)~='string' and url or lavis.newImage(url)
+end
+
+--TODO: Remove self.ox,self.oy from this!
 function lavis.widget:setImagePosition(x,y)
-	self.imgX = (x or self.imgX) + (self.shape=='box' and self.ox or 0)
-	self.imgY = (y or self.imgY) + (self.shape=='box' and self.oy or 0)
+	lavis.refresh()
+	self.imgX = x or self.imgX
+	self.imgY =y or self.imgY
 end
 
 function lavis.widget:getImagePosition()
@@ -224,6 +394,7 @@ end
 function lavis.widget:getImageHeight()
 	return self.image and self.sy*self.image:getHeight() or 0
 end
+function lavis.widget:getActualImageSize() return self.image:getDimensions() end
 function lavis.widget:getImageSize()
 	return self:getImageWidth(),self:getImageHeight()
 end
@@ -231,17 +402,19 @@ end
 function lavis.widget:setImageSize(w,h,relative)
 
 	if not self.image then return end
-	
+	lavis.refresh()
 	if type(h)=='boolean' or not h then h,relative=w,h end	--for square
 	if relative then w,h=w+self:getImageWidth(),h+self:getImageHeight() end
 
 	self.sx,self.sy=w/self.image:getWidth(),h/self.image:getHeight()
 end
 
-function lavis.widget:setImageRotation(r) self.r=r end
+function lavis.widget:setImageRotation(r) lavis.refresh() self.r=r end
 function lavis.widget:setImageOrigin(...)
 	self.ox,self.oy=...
-	self:setImagePosition()
+	if self.shape=='box' then
+		self:setImagePosition(self.imgX+self.ox,self.imgY+self.oy)
+	end
 end
 
 -- function lavis.widget:showOrigin() self.drawOrigin=true end
@@ -249,7 +422,6 @@ end
 
 -- function lavis.widget:showBorder() self.drawBorder=true end
 -- function lavis.widget:hideBorder() self.drawBorder=nil end
-
 
 function lavis.widget:isFrozen() return self.frozen end
 -- function lavis.widget:freeze() self.frozen=true end
@@ -263,25 +435,32 @@ function lavis.widget:setName(val) self.name=val end
 function lavis.widget:setValue(val)
 	local prev=self.value
 	self.value=val
-	self.onValueChange(val,prev)
+	self:onValueChange(val,prev)
 end
-function lavis.widget:setWireframe(val) self.drawBorder,self.drawOrigin=val,val end
+function lavis.widget:setWireframe(val) lavis.refresh() self.drawBorder,self.drawOrigin=val,val end
 function lavis.widget:setResponsive(val) self.responsive=val end
 function lavis.widget:isResponsive(val) return self.responsive end
 
 function lavis.widget:setValue(val) self.value=val end
 function lavis.widget:getValue() return self.value end
 
+function lavis.widget:setDepth(z)
+	z=math.min(math.max(z,1),#lavis.widgets)
+	lavis.widgets[z],lavis.widgets[self.id]=
+	lavis.widgets[self.id],lavis.widgets[z]
+	lavis.refresh()
+end
+
 function lavis.widget:setFocus(val,...)
 	if val==true then
 		if not self.focused then
 			self.focused=true
-			self.onFocusGained(...)
+			self:onFocusGained(...)
 		end
 	else
 		if self.focused then
 			self.focused=false
-			self.onFocusLost(...)
+			self:onFocusLost(...)
 		end
 	end
 end
@@ -303,7 +482,7 @@ function lavis.widget:update(dt)
 		self.whileHovered()
 		if not self.entered then
 			self.entered=true
-			self.onMouseEnter()
+			self:onMouseEnter()
 		end
 		if love.mouse.isDown(1) then
 			self.whilePressed()
@@ -311,25 +490,26 @@ function lavis.widget:update(dt)
 	else
 		if self.entered then
 			self.entered=false
-			self.onMouseExit()
+			self:onMouseExit()
 		end
 	end
 end
 
 function lavis.widget:keypressed(key,...)
-	if self.focused then self.onKeyPress(key,...) end
+	if self.focused then self:onKeyPress(key,...) end
 end
 
 function lavis.widget:keyreleased(key,...)
-	if self.focused then self.onKeyRelease(key,...) end
+	if self.focused then self:onKeyRelease(key,...) end
 end
 
 function lavis.widget:mousepressed(x,y,button,...)
+	self.dragging=button
 	if self:isHovered(x,y) then
 		if self.hotbtns[button] then
 			self:setFocus(true,button,x,y,...)
 		end
-		self.onClick(button,x,y,...)
+		self:onClick(button,x,y,...)
 	else
 		if self.escapebtns[button] then
 			self:setFocus(false,button,x,y,...)
@@ -339,19 +519,21 @@ end
 
 function lavis.widget:mousemoved(...)
 	if self:isFocused() then
-		self.onMouseMove(...)
+		if self.dragging then self.onDrag(self.dragging,...) end
+		self:onMouseMove(...)
 	end
 end
 
 function lavis.widget:wheelmoved(x,y)
 	if self.focused then
-		self.onWheelMove(x,y)
+		self:onWheelMove(x,y)
 	end
 end
 
 function lavis.widget:mousereleased(x,y,button,...)
+	self.dragging=nil
 	if self.focused then
-		self.onRelease(button,x,y,...)
+		self:onRelease(button,x,y,...)
 	end
 end
 
@@ -383,10 +565,11 @@ function lavis.widget:setHotButton(btn,remove)
 	self.hotbtns[btn]=not remove
 end
 
-
 function lavis.widget:connectSignal(signal, handler)
 	if signal=="click" or "hit" then
 		self.onClick=handler
+	elseif signal=="drag" then
+		self.onDrag=handler
 	elseif signal=="release" then
 		self.onRelease=handler
 	elseif signal=="hovered" then
@@ -399,26 +582,29 @@ function lavis.widget:connectSignal(signal, handler)
 		self.onWheelMove=handler
 	elseif signal=="focused" then
 		self.whileFocused=handler
-	elseif signal=="focus_gained" or signal=="focus" then
+	elseif signal=="focusgained" or signal=="focus" then
 		self.onFocusGained=handler
-	elseif signal=="focus_lost" or signal=="blur" then
+	elseif signal=="focuslost" or signal=="blur" then
 		self.onFocusLost=handler
-	elseif signal=="enter" or signal=="mouseenter" then
+	elseif signal=="mouseentered" then
 		self.onMouseEnter=handler
-	elseif signal=="exit" or signal=="mouseexit" then
+	elseif signal=="mouseexited" then
 		self.onMouseExit=handler
 	elseif signal=="move" then
 		self.onMove=handler
+	elseif signal=="draw" then
+		self.onDraw=handler
 	elseif signal=="resize" then
 		self.onResize=handler
 	elseif signal=="valuechanged" then
 		self.onValueChange=handler
 	end
+	return self
 end
 
 lavis.widget.addEventListener=lavis.widget.connectSignal
 
-function lavis.widget:render()
+function lavis.widget:render(toCanvas)
 	if self.drawColor then
 		r,g,b,a=love.graphics.getColor()
 		love.graphics.setColor(unpack(self.drawColor))
@@ -426,34 +612,12 @@ function lavis.widget:render()
 
 	love.graphics.draw(self.image,self.imgX,self.imgY,
 		self.r,self.sx,self.sy,self.ox,self.oy)
+	self:onDraw()
 	
 	if self.drawBorder then self:renderBorder() end
 	if self.drawOrigin then self:renderOrigin() end
 	
 	if self.drawColor then love.graphics.setColor(r,g,b,a) end
-end
-
-local function renderArrow(x,y,dir,a,b,c)
-	
-	a,b,c=a or 20,b or 5,c or 30
-
-	if dir=='right' or dir=='left' then
-		if dir=='left' then a,c=-a,-c end
-		love.graphics.line(x,y,x+a,y)
-		love.graphics.polygon('fill',
-			x+a,y-b,
-			x+a,y+b,
-			x+c,y
-		)
-	elseif dir=='down' or dir=='up' then
-		if dir=='up' then a,c=-a,-c end
-		love.graphics.line(x,y,x,y+a)
-		love.graphics.polygon('fill',
-			x-b,y+a,
-			x+b,y+a,
-			x,y+c
-		)
-	end
 end
 
 function lavis.widget:renderOrigin()
@@ -517,7 +681,6 @@ setmetatable(lavis.widget, {__call = function(c, ...)
 end})
 
 -- borrowed from itable library
-
 local function tablecopy(srcTbl)
 	local destTbl={}
 	for i in pairs(srcTbl) do
@@ -529,6 +692,8 @@ local function tablecopy(srcTbl)
 	end
 	return destTbl
 end
+lavis.renderImageButton=lavis.drawImageButton
+lavis.widget.draw=lavis.widget.render
 
 lavis.imageButton=tablecopy(lavis.widget)
 
@@ -584,17 +749,31 @@ end
 
 lavis.remove=lavis.removeWidget
 
-
-function lavis.mousepressed(...) forEachWidgetC('mousepressed','enabled',...) end
+function lavis.mousepressed(...) imgui.mousepressed(...)  forEachWidgetC('mousepressed','enabled',...) end
 function lavis.keypressed(...) forEachWidgetC('keypressed','enabled',...) end
 function lavis.keyreleased(...) forEachWidgetC('keyreleased','enabled',...) end
-function lavis.mousereleased(...) forEachWidgetC('mousereleased','enabled',...) end
+function lavis.mousereleased(...) imgui.mousereleased(...) forEachWidgetC('mousereleased','enabled',...) end
 function lavis.mousemoved(...) forEachWidgetC('mousemoved','enabled',...) end
 function lavis.wheelmoved(...) forEachWidgetC('wheelmoved','enabled',...) end
-function lavis.update(dt) forEachWidgetC('update','enabled',dt) end
-function lavis.draw() forEachWidgetC('render','visible') end
-
-function lavis.setWireframe(val) lavis.forEachWidget(function(w) w:setWireframe(val) end) end
+function lavis.update(dt) imgui.update(dt) forEachWidgetC('update','enabled',dt) end
+function lavis.draw(...)
+	if lavis.directDraw then
+		return forEachWidgetC('render','visible')
+	end
+	if lavis.needsRefresh then
+		love.graphics.setCanvas(lavis.canvas)
+		love.graphics.clear()
+		forEachWidgetC('render','visible')
+		love.graphics.setCanvas()
+		lavis.needsRefresh=false
+	end
+	--try your best to do 
+	love.graphics.draw(lavis.canvas,...)
+end
+function lavis.setWireframe(val)
+	imgui.drawBorder,imgui.drawOrigin=val,val
+	lavis.forEachWidget(function(w) w:setWireframe(val) end)
+end
 function lavis.enableAll() lavis.forEachWidget(function(w) w.enabled=true end) end
 function lavis.disableAll() lavis.forEachWidget(function(w) w.enabled=false end) end
 function lavis.showAll() lavis.forEachWidget(function(w) w.visible=true end) end
@@ -608,32 +787,16 @@ function lavis.new(...) return lavis.widget(...) end
 	To override these functions just add your stuff *below* the lavis calls
 	... So that your code never sees them again (unless you make some use of them)
 ]]
-function lavis.override()
-function love.mousepressed(...)
-	lavis.mousepressed(...)
-end
 
-function love.mousereleased(...)
-	lavis.mousereleased(...)
-end
+love.mousepressed=love.mousepressed or function(...) lavis.mousepressed(...) end
+love.keypressed=love.keypressed or function(...) lavis.keypressed(...) end
+love.mousereleased=love.mousereleased or function(...) lavis.mousereleased(...) end
+love.keyreleased=love.keyreleased or function(...) lavis.keyreleased(...) end
+love.mousemoved=love.mousemoved or function(...) lavis.mousemoved(...) end
+love.wheelmoved=love.wheelmoved or function(...) lavis.wheelmoved(...) end
+love.update=love.update or function(...) lavis.update(...) end
+love.draw=love.draw or function(...) lavis.draw(...) end
+love.resize=love.resize or function(...) lavis.resize(...) end
+-- love.resize=love.wheelmoved or function(...) lavis.wheelmoved(...) end
 
-function love.keypressed(...)
-	lavis.keypressed(...)
-end
-
-function love.keyreleased(...)
-	lavis.keyreleased(...)
-end
-
-function love.mousemoved(...)
-	lavis.mousemoved(...)
-end
-
-function love.wheelmoved(...)
-	lavis.wheelmoved(...)
-end
-	
-function love.draw() lavis.draw() end
-function love.update(dt) lavis.update(dt) end
-end
 return lavis
