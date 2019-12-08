@@ -78,6 +78,8 @@ Lavis is a responsive retained-mode GUI! (the responsiveness don't apply to Lavi
 <img src="screens/responsive.gif" width=640 height=480/><br/>
 </a>
 
+Here responsive is used in the context of image-position/dimension following widget position/dimension, alright?
+The complete version (not uploaded at the moment) of Lavis has hboxes and vboxes which makes it responsive in the truest sense!!
 
 ## Documentation
 
